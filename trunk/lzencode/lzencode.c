@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG
+
 #define TAM_MAX_STRING 128
 
 struct no {
@@ -24,6 +26,9 @@ void iniciar_lista(node **lista) {
 }
 
 void inserir_elemento(node **lista, node *n) {
+#ifdef DEBUG
+	printf("Inserindo elemento %d \"%s\" (%d|\"%c\") ...\n", n->indice, n->string, n->prefixo, n->novo_simbolo);
+#endif
 	node *p = *lista;
 
     if (p == NULL) {
@@ -94,19 +99,6 @@ char* get_prefixo(char string[]) {
 	return string;
 }
 
-void imprimir_arquivo(FILE *file) {
-	char simbolo;
-
-	while (!feof(file)) {
-		/* lendo próximo símbolo */
-		fread(&simbolo, sizeof(char), 1, file);
-		printf("\"%c\" | ", simbolo);
-	}
-
-	rewind(file);
-	printf("\n\n");
-}
-
 void imprimir_lista_strings(node *lista) {
 	node *p = lista;
 
@@ -118,12 +110,14 @@ void imprimir_lista_strings(node *lista) {
 
 int main(int argc, char *argv[]) {
 
-	/*if(argc != 2) {
+	/*
+	if(argc != 2) {
 		printf("Parâmetros inválidos.\n");
 		exit (EXIT_FAILURE);
-	}*/
+	}
+	*/
 
-	argv[1] = "/home/ronie/UnB/OA/2-2011/Trabalhos/trab01/infile.txt";
+	argv[1] = "/home/rfmenezes/ronie/teste_arquivos/alice30.txt";
 
 	FILE *infile;
 	if ((infile = fopen(argv[1], "r")) == NULL) {
@@ -131,17 +125,18 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	/*FILE *codedfile;
-	if ((codedfile = fopen("codedfile.lz", "wb")) == NULL) {
+	argv[2] = "/home/rfmenezes/ronie/codedfile.txt";
+
+	FILE *codedfile;
+	if ((codedfile = fopen(argv[2], "w")) == NULL) {
 		printf("O arquivo de saída não pode ser criado.\n");
 		exit(EXIT_FAILURE);
-	}*/
-
-	/*imprimir_arquivo(infile);*/
+	}
 
 	node *lista;
 	iniciar_lista(&lista);
 
+	/*
 	node *n = calloc(1, sizeof(node));
 	n->indice = 0;
 	strcpy(n->string, "");
@@ -149,6 +144,9 @@ int main(int argc, char *argv[]) {
 	n->novo_simbolo = '$';
 
 	inserir_elemento(&lista, n);
+	*/
+
+	static int indice = 1;
 
 	char simbolo;
 	char string[TAM_MAX_STRING] = "";
@@ -162,10 +160,11 @@ int main(int argc, char *argv[]) {
 		
 		if (!is_string_encontrada(lista, string)) {
 			node *n = calloc(1, sizeof(node));
-			n->indice = contar_elementos(lista) + 1;
+			/*n->indice = contar_elementos(lista) + 1;*/
+			n->indice = indice++;
 			strcpy(n->string, string);
 			n->prefixo = recuperar_codigo(lista, get_prefixo(string));
-			n->novo_simbolo = string[strlen(string)-1];
+			n->novo_simbolo = simbolo;
 			inserir_elemento(&lista, n);
 
 			/* limpando a string */
@@ -175,9 +174,18 @@ int main(int argc, char *argv[]) {
 
 	//TODO inserir ultima string
 
-	imprimir_lista_strings(lista);
+	node *p;
+	while (lista != NULL) {
+		p = lista;
+		fwrite(&(p->prefixo), sizeof(int), 1, codedfile);
+		fwrite(&(p->novo_simbolo), sizeof(char), 1, codedfile);
+
+		lista = p->prox;
+		free(p);
+	}
+	free(lista);
 
 	fclose(infile);
-	/*fclose(codedfile);*/
+	fclose(codedfile);
 	exit(EXIT_SUCCESS);
 }
