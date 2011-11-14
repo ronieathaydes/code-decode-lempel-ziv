@@ -8,17 +8,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define DEBUG
 
 #define TAM_MAX_STRING 128
 
-struct no {
+struct nd {
 	int indice;
 	char string[TAM_MAX_STRING];
 	int prefixo;
 	char novo_simbolo;
-	struct no *prox;
+	struct nd *prox;
 } typedef node;
 
 void iniciar_lista(node **lista) {
@@ -99,6 +100,27 @@ char* get_prefixo(char string[]) {
 	return string;
 }
 
+void decimal_to_binario(int num) {
+	while (num % 2 > 1) {
+
+	}
+}
+
+void escrever_binario(char bit) {
+	static int count_buffer = 0;
+	static unsigned long buffer = 0L;
+
+	buffer = (buffer << 1) | ((bit << 7) >> 7);
+	count_buffer++;
+
+	if (count_buffer == 32) {
+		/* TODO escrever buffer */
+
+		count_buffer = 0;
+		buffer = 0L;
+	}
+}
+
 void imprimir_lista_strings(node *lista) {
 	node *p = lista;
 
@@ -110,14 +132,13 @@ void imprimir_lista_strings(node *lista) {
 
 int main(int argc, char *argv[]) {
 
-	/*
-	if(argc != 2) {
+	/*if(argc != 3) {
 		printf("Parâmetros inválidos.\n");
 		exit (EXIT_FAILURE);
-	}
-	*/
+	}*/
 
 	argv[1] = "/home/rfmenezes/ronie/teste_arquivos/alice30.txt";
+	argv[2] = "/home/rfmenezes/ronie/codedfile.txt";
 
 	FILE *infile;
 	if ((infile = fopen(argv[1], "r")) == NULL) {
@@ -125,10 +146,8 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	argv[2] = "/home/rfmenezes/ronie/codedfile.txt";
-
 	FILE *codedfile;
-	if ((codedfile = fopen(argv[2], "w")) == NULL) {
+	if ((codedfile = fopen(argv[2], "wb")) == NULL) {
 		printf("O arquivo de saída não pode ser criado.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -136,16 +155,7 @@ int main(int argc, char *argv[]) {
 	node *lista;
 	iniciar_lista(&lista);
 
-	/*
-	node *n = calloc(1, sizeof(node));
-	n->indice = 0;
-	strcpy(n->string, "");
-	n->prefixo = 0;
-	n->novo_simbolo = '$';
-
-	inserir_elemento(&lista, n);
-	*/
-
+	/* "static" fará sentido quando refatorar para um função separada */
 	static int indice = 1;
 
 	char simbolo;
@@ -160,7 +170,6 @@ int main(int argc, char *argv[]) {
 		
 		if (!is_string_encontrada(lista, string)) {
 			node *n = calloc(1, sizeof(node));
-			/*n->indice = contar_elementos(lista) + 1;*/
 			n->indice = indice++;
 			strcpy(n->string, string);
 			n->prefixo = recuperar_codigo(lista, get_prefixo(string));
@@ -172,18 +181,22 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	//TODO inserir ultima string
+	/* TODO inserir ultima string */
 
 	node *p;
 	while (lista != NULL) {
 		p = lista;
-		fwrite(&(p->prefixo), sizeof(int), 1, codedfile);
-		fwrite(&(p->novo_simbolo), sizeof(char), 1, codedfile);
+
+		int tam_indice;
+		tam_indice = ceil(log2(p->indice - 1));
+
+		while (tam_indice > 0) {
+
+		}
 
 		lista = p->prox;
 		free(p);
 	}
-	free(lista);
 
 	fclose(infile);
 	fclose(codedfile);
