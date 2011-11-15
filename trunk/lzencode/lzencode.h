@@ -1,16 +1,24 @@
 /*
  * lzencode.h
  *
- *  Created on: Nov 13, 2011
+ *  Created on: Oct 13, 2011
  *      Author: ronie
  */
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+
 #define TAM_MAX_STRING 128
 
-struct nd {
-	int indice;
-	char string[TAM_MAX_STRING];
-	int prefixo;
-	char novo_simbolo;
-	struct nd *prox;
-} typedef node;
+/*
+ * Variáveis globais
+ */
+FILE *infile;
+FILE *codedfile;
+
+/*
+ * Função externa à biblioteca
+ */
+void encode_file();
