@@ -7,6 +7,8 @@
 
 #include "lzencode.h"
 
+#define DEBUG
+
 struct nd {
 	int index;
 	char string[TAM_MAX_STRING];
@@ -15,13 +17,13 @@ struct nd {
 	struct nd *next;
 } typedef node;
 
-void initialize_list(node **list) {
+static void initialize_list(node **list) {
 	*list = NULL;
 }
 
-void insert_node(node **list, node *n) {
+static void insert_node(node **list, node *n) {
 #ifdef DEBUG
-	printf("Inserindo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
+	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
 	node *p = *list;
 
@@ -36,7 +38,7 @@ void insert_node(node **list, node *n) {
     }
 }
 
-int is_string_found(node *list, char *string) {
+static int is_string_found(node *list, char *string) {
 	node *p = list;
 
 	if (p == NULL) {
@@ -54,7 +56,7 @@ int is_string_found(node *list, char *string) {
 	}
 }
 
-int find_index(node *list, char *string) {
+static int find_index(node *list, char *string) {
 	node *p = list;
 
 	if (p == NULL) {
@@ -72,12 +74,12 @@ int find_index(node *list, char *string) {
 	}
 }
 
-char* get_prefix(char string[]) {
+static char* get_prefix(char string[]) {
 	string[strlen(string)-1] = '\0';
 	return string;
 }
 
-void create_dictionary(node **list) {
+static void create_dictionary(node **list) {
 	static int index = 1;
 
 	initialize_list(list);
@@ -108,18 +110,18 @@ void create_dictionary(node **list) {
 	/* TODO inserir ultima string */
 }
 
-void to_buffer(int code, int size) {
-	static int bit_count = 0;
+static void to_buffer(int code, int size) {
 	static unsigned long bit_buffer = 0L;
+	static int bit_count = 0;
 
-	bit_count += size;
 	bit_buffer |= (unsigned long)code << (32 - bit_count - size);
+	bit_count += size;
 
 	while (bit_count >= 8) {
 		fputc(bit_buffer >> 24, codedfile);
 
-		bit_count -= 8;
 		bit_buffer <<= 8;
+		bit_count -= 8;
 	}
 
 	/* TODO esvaziar buffer na última passada */
@@ -132,12 +134,17 @@ void encode_file() {
 	node *p;
 	while (lista != NULL) {
 		p = lista;
+#ifdef DEBUG
+	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
+#endif
 
-		int tam_indice = ceil(log2(p->index - 1));
-		if (tam_indice > 0) {
+		if (p->index == 2) {
+			to_buffer(p->prefix, 1);
+		} else if (p->index > 2) {
+			int tam_indice = ceil(log2(p->index - 1));
 			to_buffer(p->prefix, tam_indice);
 		}
-		to_buffer(p->new_simbol, sizeof(char));
+		to_buffer(p->new_simbol, sizeof(char) * 8);
 
 		lista = p->next;
 		free(p);
