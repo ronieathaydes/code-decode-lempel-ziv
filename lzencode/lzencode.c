@@ -7,7 +7,8 @@
 
 #include "lzencode.h"
 
-#define DEBUG
+//#define LEITURA
+#define ESCRITA
 
 struct nd {
 	int index;
@@ -22,8 +23,7 @@ static void initialize_list(node **list) {
 }
 
 static void insert_node(node **list, node *n) {
-
-#ifdef DEBUG
+#ifdef LEITURA
 	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
 
@@ -117,7 +117,14 @@ static void write_code(int code, int size) {
 	bit_buffer |= (unsigned long)code << (32 - bit_count - size);
 	bit_count += size;
 
+#ifdef ESCRITA
+	printf("Escrevendo no buffer [%x|%d]...\n", code, size);
+#endif
+
 	while (bit_count >= 8) {
+#ifdef ESCRITA
+	printf("############# Esvaziando o buffer [%02x]...\n", (unsigned int)bit_buffer >> 24);
+#endif
 		fputc(bit_buffer >> 24, codedfile);
 
 		bit_buffer <<= 8;
@@ -137,9 +144,9 @@ void encode_file() {
 	while (list != NULL) {
 		p = list;
 
-#ifdef DEBUG
-	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
-#endif
+//#ifdef ESCRITA
+//	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
+//#endif
 
 		if (p->index == 2) {
 			write_code(p->prefix, 1);
