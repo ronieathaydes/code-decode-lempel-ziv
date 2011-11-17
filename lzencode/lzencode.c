@@ -22,9 +22,11 @@ static void initialize_list(node **list) {
 }
 
 static void insert_node(node **list, node *n) {
+
 #ifdef DEBUG
 	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
+
 	node *p = *list;
 
     if (p == NULL) {
@@ -82,8 +84,6 @@ static char* get_prefix(char string[]) {
 static void create_dictionary(node **list) {
 	static int index = 1;
 
-	initialize_list(list);
-
 	char simbol;
 	char string[TAM_MAX_STRING] = "";
 	while (!feof(infile)) {
@@ -110,7 +110,7 @@ static void create_dictionary(node **list) {
 	/* TODO inserir ultima string */
 }
 
-static void to_buffer(int code, int size) {
+static void write_code(int code, int size) {
 	static unsigned long bit_buffer = 0L;
 	static int bit_count = 0;
 
@@ -128,25 +128,28 @@ static void to_buffer(int code, int size) {
 }
 
 void encode_file() {
-	node *lista;
-	create_dictionary(&lista);
+	node *list;
+	initialize_list(&list);
+
+	create_dictionary(&list);
 
 	node *p;
-	while (lista != NULL) {
-		p = lista;
+	while (list != NULL) {
+		p = list;
+
 #ifdef DEBUG
 	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
 #endif
 
 		if (p->index == 2) {
-			to_buffer(p->prefix, 1);
+			write_code(p->prefix, 1);
 		} else if (p->index > 2) {
 			int tam_indice = ceil(log2(p->index - 1));
-			to_buffer(p->prefix, tam_indice);
+			write_code(p->prefix, tam_indice);
 		}
-		to_buffer(p->new_simbol, sizeof(char) * 8);
+		write_code(p->new_simbol, sizeof(char) * 8);
 
-		lista = p->next;
+		list = p->next;
 		free(p);
 	}
 }
