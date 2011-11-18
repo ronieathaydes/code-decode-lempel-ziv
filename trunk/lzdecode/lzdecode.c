@@ -11,7 +11,7 @@
 
 struct nd {
 	int index;
-	char string[TAM_MAX_STRING];
+	char string[STRING_MAX_SIZE];
 	int prefix;
 	char new_simbol;
 	struct nd *next;
@@ -22,7 +22,6 @@ static void initialize_list(node **list) {
 }
 
 static void insert_node(node **list, node *n) {
-
 #ifdef DEBUG
 	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
@@ -40,18 +39,33 @@ static void insert_node(node **list, node *n) {
     }
 }
 
-static unsigned long read_code(int size) {
-	static unsigned long bit_buffer = 0L;
-	static int bit_count = 0;
+static void build_string(node *list, char string[], int prefix) {
 
-	unsigned long return_value = 0;
-
-	while (bit_count <= 24)	{
-		bit_buffer |= (unsigned long)fgetc(codedfile) << (24 - bit_count);
-		bit_count += 8;
+	node *p = list;
+	while (p->index < prefix) {
+		p = p->next;
 	}
 
-	return_value = bit_buffer >> (32 - size);
+	if (p->prefix != 0) {
+		build_string(list, string, p->prefix);
+	}
+
+	//TODO parei aqui
+
+}
+
+static unsigned long int read_code(int size) {
+	static unsigned long int bit_buffer = 0L;
+	static int bit_count = 0;
+
+	unsigned long int return_value;
+
+	while (bit_count <= LONG_INT_SIZE - CHAR_SIZE)	{
+		bit_buffer |= (unsigned long int)fgetc(codedfile) << (LONG_INT_SIZE - CHAR_SIZE - bit_count);
+		bit_count += CHAR_SIZE;
+	}
+
+	return_value = bit_buffer >> (LONG_INT_SIZE - size);
 	bit_buffer <<= size;
 	bit_count -= size;
 
@@ -72,7 +86,11 @@ static void create_dictionary(node **list) {
 			int tam_indice = ceil(log2(index - 1));
 			n->prefix = (int)read_code(tam_indice);
 		}
-		n->new_simbol = (char)read_code(sizeof(char) * 8);
+
+		n->new_simbol = (char)read_code(CHAR_SIZE);
+
+		char string[STRING_MAX_SIZE] = "";
+		build_string(*list, string, n->prefix);
 
 		/* TODO inserir string inteira */
 

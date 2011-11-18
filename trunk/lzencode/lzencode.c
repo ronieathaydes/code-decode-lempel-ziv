@@ -88,7 +88,8 @@ static void create_dictionary(node **list) {
 	char string[TAM_MAX_STRING] = "";
 	while (!feof(infile)) {
 		/* lendo próximo símbolo */
-		fread(&simbol, sizeof(char), 1, infile);
+		simbol = fgetc(infile);
+//		fread(&simbol, sizeof(char), 1, infile);
 
 		/* concatenado símbolo à string */
 		string[strlen(string)+1] = '\0';
@@ -111,24 +112,17 @@ static void create_dictionary(node **list) {
 }
 
 static void write_code(int code, int size) {
-	static unsigned long bit_buffer = 0L;
+	static unsigned long int bit_buffer = 0L;
 	static int bit_count = 0;
 
-	bit_buffer |= (unsigned long)code << (32 - bit_count - size);
+	bit_buffer |= (unsigned long int)code << (LONG_INT_SIZE - bit_count - size);
 	bit_count += size;
 
-#ifdef ESCRITA
-	printf("Escrevendo no buffer [%x|%d]...\n", code, size);
-#endif
+	while (bit_count >= CHAR_SIZE) {
+		fputc(bit_buffer >> (LONG_INT_SIZE - CHAR_SIZE), codedfile);
 
-	while (bit_count >= 8) {
-#ifdef ESCRITA
-	printf("############# Esvaziando o buffer [%02x]...\n", (unsigned int)bit_buffer >> 24);
-#endif
-		fputc(bit_buffer >> 24, codedfile);
-
-		bit_buffer <<= 8;
-		bit_count -= 8;
+		bit_buffer <<= CHAR_SIZE;
+		bit_count -= CHAR_SIZE;
 	}
 
 	/* TODO esvaziar buffer na última passada */
@@ -144,9 +138,9 @@ void encode_file() {
 	while (list != NULL) {
 		p = list;
 
-//#ifdef ESCRITA
-//	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
-//#endif
+#ifdef ESCRITA
+	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
+#endif
 
 		if (p->index == 2) {
 			write_code(p->prefix, 1);
@@ -154,7 +148,7 @@ void encode_file() {
 			int tam_indice = ceil(log2(p->index - 1));
 			write_code(p->prefix, tam_indice);
 		}
-		write_code(p->new_simbol, sizeof(char) * 8);
+		write_code(p->new_simbol, CHAR_SIZE);
 
 		list = p->next;
 		free(p);
