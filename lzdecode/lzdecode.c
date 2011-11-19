@@ -17,29 +17,29 @@ struct nd {
 	struct nd *next;
 } typedef node;
 
-static void initialize_list(node **list) {
-	*list = NULL;
+static node *list;
+static node *end_list;
+
+static void initialize_list() {
+	list = end_list = NULL;
 }
 
-static void insert_node(node **list, node *n) {
+static void insert_node(node *n) {
 #ifdef DEBUG
 	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
 
-	node *p = *list;
-
-    if (p == NULL) {
-    	*list = n;
-    } else {
-    	while (p->next != NULL) {
-    		p = p->next;
-    	}
-
-    	p->next = n;
-    }
+	if (list == NULL && end_list == NULL) {
+		list = end_list = n;
+	} else if (list == end_list) {
+		list->next = end_list = n;
+	} else {
+		end_list->next = n;
+		end_list = end_list->next;
+	}
 }
 
-static void build_string(node *list, char string[], int prefix) {
+static void build_string(char string[], int prefix) {
 	node *p = list;
 
 	while (p->index < prefix) {
@@ -47,7 +47,7 @@ static void build_string(node *list, char string[], int prefix) {
 	}
 
 	if (p->prefix > 0) {
-		build_string(list, string, p->prefix);
+		build_string(string, p->prefix);
 	}
 
 	string[strlen(string)+1] = '\0';
@@ -72,7 +72,7 @@ static unsigned long int read_code(int size) {
 	return return_value;
 }
 
-static void create_dictionary(node **list) {
+static void create_dictionary() {
 	static int index = 1;
 
 	while (!feof(codedfile)) {
@@ -91,22 +91,21 @@ static void create_dictionary(node **list) {
 
 		char string[STRING_MAX_SIZE] = "";
 		if (n->prefix > 0) {
-			build_string(*list, string, n->prefix);
+			build_string(string, n->prefix);
 		}
 		string[strlen(string)+1] = '\0';
 		string[strlen(string)] = n->new_simbol;
 		strcpy(n->string, string);
 
-		insert_node(list, n);
+		insert_node(n);
 		index++;
 	}
 }
 
 void decode_file() {
-	node *list;
-	initialize_list(&list);
+	initialize_list();
 
-	create_dictionary(&list);
+	create_dictionary();
 
 	node *p;
 	while (list != NULL) {
