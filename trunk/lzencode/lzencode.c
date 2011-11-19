@@ -17,25 +17,25 @@ struct nd {
 	struct nd *next;
 } typedef node;
 
-static void initialize_list(node **list) {
-	*list = NULL;
+static node *list;
+static node *end_list;
+
+static void initialize_list() {
+	list = end_list = NULL;
 }
 
-static void insert_node(node **list, node *n) {
-	node *p = *list;
-
-    if (p == NULL) {
-    	*list = n;
+static void insert_node(node *n) {
+	if (list == NULL && end_list == NULL) {
+    	list = end_list = n;
+    } else if (list == end_list) {
+    	list->next = end_list = n;
     } else {
-    	while (p->next != NULL) {
-    		p = p->next;
-    	}
-
-    	p->next = n;
+    	end_list->next = n;
+    	end_list = end_list->next;
     }
 }
 
-static int is_string_found(node *list, char *string) {
+static int is_string_found(char *string) {
 	node *p = list;
 
 	if (p == NULL) {
@@ -53,7 +53,7 @@ static int is_string_found(node *list, char *string) {
 	}
 }
 
-static int find_index(node *list, char *string) {
+static int find_index(char *string) {
 	node *p = list;
 
 	if (p == NULL) {
@@ -76,7 +76,7 @@ static char* get_prefix(char string[]) {
 	return string;
 }
 
-static void create_dictionary(node **list) {
+static void create_dictionary() {
 	static int index = 1;
 
 	char simbol;
@@ -90,13 +90,13 @@ static void create_dictionary(node **list) {
 			string[strlen(string)+1] = '\0';
 			string[strlen(string)] = simbol;
 
-			if (!is_string_found(*list, string)) {
+			if (!is_string_found(string)) {
 				node *n = calloc(1, sizeof(node));
 				n->index = index++;
 				strcpy(n->string, string);
-				n->prefix = find_index(*list, get_prefix(string));
+				n->prefix = find_index(get_prefix(string));
 				n->new_simbol = simbol;
-				insert_node(list, n);
+				insert_node(n);
 
 				/* limpando a string */
 				string[0] = '\0';
@@ -125,10 +125,9 @@ static void write_code(int code, int size) {
 }
 
 void encode_file() {
-	node *list;
-	initialize_list(&list);
+	initialize_list();
 
-	create_dictionary(&list);
+	create_dictionary();
 
 	node *p;
 	while (list != NULL) {
