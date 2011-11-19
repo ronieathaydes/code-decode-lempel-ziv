@@ -40,18 +40,18 @@ static void insert_node(node **list, node *n) {
 }
 
 static void build_string(node *list, char string[], int prefix) {
-
 	node *p = list;
+
 	while (p->index < prefix) {
 		p = p->next;
 	}
 
-	if (p->prefix != 0) {
+	if (p->prefix > 0) {
 		build_string(list, string, p->prefix);
 	}
 
-	//TODO parei aqui
-
+	string[strlen(string)+1] = '\0';
+	string[strlen(string)] = p->new_simbol;
 }
 
 static unsigned long int read_code(int size) {
@@ -90,9 +90,12 @@ static void create_dictionary(node **list) {
 		n->new_simbol = (char)read_code(CHAR_SIZE);
 
 		char string[STRING_MAX_SIZE] = "";
-		build_string(*list, string, n->prefix);
-
-		/* TODO inserir string inteira */
+		if (n->prefix > 0) {
+			build_string(*list, string, n->prefix);
+		}
+		string[strlen(string)+1] = '\0';
+		string[strlen(string)] = n->new_simbol;
+		strcpy(n->string, string);
 
 		insert_node(list, n);
 		index++;
@@ -104,4 +107,14 @@ void decode_file() {
 	initialize_list(&list);
 
 	create_dictionary(&list);
+
+	node *p;
+	while (list != NULL) {
+		p = list;
+
+		fputs(p->string, outfile);
+
+		list = p->next;
+		free(p);
+	}
 }

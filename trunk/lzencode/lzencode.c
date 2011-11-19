@@ -7,8 +7,7 @@
 
 #include "lzencode.h"
 
-//#define LEITURA
-#define ESCRITA
+#define DEBUG
 
 struct nd {
 	int index;
@@ -23,10 +22,6 @@ static void initialize_list(node **list) {
 }
 
 static void insert_node(node **list, node *n) {
-#ifdef LEITURA
-	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
-#endif
-
 	node *p = *list;
 
     if (p == NULL) {
@@ -89,22 +84,23 @@ static void create_dictionary(node **list) {
 	while (!feof(infile)) {
 		/* lendo próximo símbolo */
 		simbol = fgetc(infile);
-//		fread(&simbol, sizeof(char), 1, infile);
 
-		/* concatenado símbolo à string */
-		string[strlen(string)+1] = '\0';
-		string[strlen(string)] = simbol;
+		if (!feof(infile)) {
+			/* concatenado símbolo à string */
+			string[strlen(string)+1] = '\0';
+			string[strlen(string)] = simbol;
 
-		if (!is_string_found(*list, string)) {
-			node *n = calloc(1, sizeof(node));
-			n->index = index++;
-			strcpy(n->string, string);
-			n->prefix = find_index(*list, get_prefix(string));
-			n->new_simbol = simbol;
-			insert_node(list, n);
+			if (!is_string_found(*list, string)) {
+				node *n = calloc(1, sizeof(node));
+				n->index = index++;
+				strcpy(n->string, string);
+				n->prefix = find_index(*list, get_prefix(string));
+				n->new_simbol = simbol;
+				insert_node(list, n);
 
-			/* limpando a string */
-			string[0] = '\0';
+				/* limpando a string */
+				string[0] = '\0';
+			}
 		}
 	}
 
@@ -138,7 +134,7 @@ void encode_file() {
 	while (list != NULL) {
 		p = list;
 
-#ifdef ESCRITA
+#ifdef DEBUG
 	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
 #endif
 
