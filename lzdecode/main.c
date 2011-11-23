@@ -15,16 +15,16 @@ int main(int argc, char *argv[]) {
 		exit (EXIT_FAILURE);
 	}*/
 
-	argv[1] = "/home/rfmenezes/ronie/codedfile.lz";
-	argv[2] = "/home/rfmenezes/ronie/outfile.txt";
+	argv[1] = "/home/padawan/ronie/codedfile.lz";
+	argv[2] = "/home/padawan/ronie/outfile.txt";
 
 	if ((codedfile = fopen(argv[1], "rb")) == NULL) {
-		printf("O arquivo de entrada não pode ser aberto.\n");
+		printf("O arquivo de entrada nao pode ser aberto.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if ((outfile = fopen(argv[2], "w")) == NULL) {
-		printf("O arquivo de saída não pode ser criado.\n");
+		printf("O arquivo de saída nao pode ser criado.\n");
 		exit(EXIT_FAILURE);
 	}
 

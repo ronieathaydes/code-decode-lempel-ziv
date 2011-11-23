@@ -13,7 +13,7 @@
 #define CHAR_SIZE sizeof(char) * 8
 #define LONG_INT_SIZE sizeof(long int) * 8
 
-#define TAM_MAX_STRING 128
+#define STRING_MAX_SIZE 128
 
 /*
  * Variáveis globais
