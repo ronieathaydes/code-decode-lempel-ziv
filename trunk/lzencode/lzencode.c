@@ -11,7 +11,7 @@
 
 struct nd {
 	int index;
-	char string[TAM_MAX_STRING];
+	char string[STRING_MAX_SIZE];
 	int prefix;
 	char new_simbol;
 	struct nd *next;
@@ -19,6 +19,11 @@ struct nd {
 
 static node *list;
 static node *end_list;
+
+static unsigned long int bit_buffer = 0L;
+static int bit_count = 0;
+
+static char last_string[STRING_MAX_SIZE] = "";
 
 static void initialize_list() {
 	list = end_list = NULL;
@@ -80,7 +85,7 @@ static void create_dictionary() {
 	static int index = 1;
 
 	char simbol;
-	char string[TAM_MAX_STRING] = "";
+	char string[STRING_MAX_SIZE] = "";
 	while (!feof(infile)) {
 		/* lendo próximo símbolo */
 		simbol = fgetc(infile);
@@ -104,12 +109,10 @@ static void create_dictionary() {
 		}
 	}
 
-	/* TODO inserir ultima string */
+	strcpy(last_string, string);
 }
 
 static void write_code(int code, int size) {
-	static unsigned long int bit_buffer = 0L;
-	static int bit_count = 0;
 
 	bit_buffer |= (unsigned long int)code << (LONG_INT_SIZE - bit_count - size);
 	bit_count += size;
@@ -120,8 +123,6 @@ static void write_code(int code, int size) {
 		bit_buffer <<= CHAR_SIZE;
 		bit_count -= CHAR_SIZE;
 	}
-
-	/* TODO esvaziar buffer na última passada */
 }
 
 void encode_file() {
@@ -129,23 +130,47 @@ void encode_file() {
 
 	create_dictionary();
 
-	node *p;
+	// Escrevendo o tamanho do dicionario
+	int dictionary_size = end_list->index;
+	fwrite(&dictionary_size, sizeof(int), 1, codedfile);
+
+	node *p = NULL;
+	// O primeiro elemento nao precisa de prefixo
+	p = list;
+	write_code(p->new_simbol, CHAR_SIZE);
+#ifdef DEBUG
+	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
+#endif
+	list = p->next;
+	free(p);
+
+	// O prefixo do segundo elemento precisa de apenas 1 bit
+	p = list;
+	write_code(p->prefix, 1);
+	write_code(p->new_simbol, CHAR_SIZE);
+#ifdef DEBUG
+	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
+#endif
+	list = p->next;
+	free(p);
+
 	while (list != NULL) {
 		p = list;
-
-#ifdef DEBUG
-	printf("Escrevento elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
-#endif
-
-		if (p->index == 2) {
-			write_code(p->prefix, 1);
-		} else if (p->index > 2) {
-			int tam_indice = ceil(log2(p->index - 1));
-			write_code(p->prefix, tam_indice);
-		}
+		write_code(p->prefix, ceil(log2(p->index - 1)));
 		write_code(p->new_simbol, CHAR_SIZE);
-
+#ifdef DEBUG
+	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
+#endif
 		list = p->next;
 		free(p);
 	}
+
+	if (bit_count > 0) {
+#ifdef DEBUG
+	printf("Esvaziando buffer...\n");
+#endif
+		fputc(bit_buffer >> (LONG_INT_SIZE - CHAR_SIZE), codedfile);
+	}
+
+	/* TODO inserir ultima string "last_string" */
 }

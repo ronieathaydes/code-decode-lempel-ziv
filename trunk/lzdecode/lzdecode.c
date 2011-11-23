@@ -20,6 +20,9 @@ struct nd {
 static node *list;
 static node *end_list;
 
+static unsigned long int bit_buffer = 0L;
+static int bit_count = 0;
+
 static void initialize_list() {
 	list = end_list = NULL;
 }
@@ -55,14 +58,18 @@ static void build_string(char string[], int prefix) {
 }
 
 static unsigned long int read_code(int size) {
-	static unsigned long int bit_buffer = 0L;
-	static int bit_count = 0;
-
 	unsigned long int return_value;
 
 	while (bit_count <= LONG_INT_SIZE - CHAR_SIZE)	{
-		bit_buffer |= (unsigned long int)fgetc(codedfile) << (LONG_INT_SIZE - CHAR_SIZE - bit_count);
-		bit_count += CHAR_SIZE;
+		unsigned long int byte_read =
+				(unsigned long int)fgetc(codedfile) << (LONG_INT_SIZE - CHAR_SIZE - bit_count);
+
+		if (!feof(codedfile)) {
+			bit_buffer |= byte_read;
+			bit_count += CHAR_SIZE;
+		} else {
+			break;
+		}
 	}
 
 	return_value = bit_buffer >> (LONG_INT_SIZE - size);
@@ -75,9 +82,14 @@ static unsigned long int read_code(int size) {
 static void create_dictionary() {
 	static int index = 1;
 
-	while (!feof(codedfile)) {
+	int dictionary_size = 0;
+	fread(&dictionary_size, sizeof(int), 1, codedfile);
+
+	while (index <= dictionary_size) {
 		node *n = calloc(1, sizeof(node));
 		n->index = index;
+
+		//TODO eliminar if
 
 		n->prefix = 0;
 		if (index == 2) {
