@@ -23,7 +23,20 @@ static node *end_list;
 static unsigned long int bit_buffer = 0L;
 static int bit_count = 0;
 
-static char last_string[STRING_MAX_SIZE] = "";
+//static char last_string[STRING_MAX_SIZE] = "";
+
+static char *file = NULL;
+static char *begin_file = NULL;
+
+static void read_file() {
+	fseek(infile, 0, SEEK_END);
+	long file_size = ftell(infile);
+	rewind(infile);
+
+	file = calloc(file_size, sizeof(char));
+	fread(file, sizeof(char), file_size, infile);
+	begin_file = file;
+}
 
 static void initialize_list() {
 	list = end_list = NULL;
@@ -109,7 +122,7 @@ static void create_dictionary() {
 		}
 	}
 
-	strcpy(last_string, string);
+//	strcpy(last_string, string);
 }
 
 static void write_code(int code, int size) {
@@ -126,8 +139,8 @@ static void write_code(int code, int size) {
 }
 
 void encode_file() {
+	read_file();
 	initialize_list();
-
 	create_dictionary();
 
 	// Escrevendo o tamanho do dicionario
