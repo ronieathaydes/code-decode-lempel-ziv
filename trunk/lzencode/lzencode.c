@@ -23,14 +23,13 @@ static node *end_list;
 static unsigned long int bit_buffer = 0L;
 static int bit_count = 0;
 
-//static char last_string[STRING_MAX_SIZE] = "";
-
 static char *file = NULL;
 static char *begin_file = NULL;
+static long file_size = 0;
 
-static void read_file() {
+static void load_file() {
 	fseek(infile, 0, SEEK_END);
-	long file_size = ftell(infile);
+	file_size = ftell(infile);
 	rewind(infile);
 
 	file = calloc(file_size, sizeof(char));
@@ -43,6 +42,9 @@ static void initialize_list() {
 }
 
 static void insert_node(node *n) {
+#ifdef DEBUG
+	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
+#endif
 	if (list == NULL && end_list == NULL) {
     	list = end_list = n;
     } else if (list == end_list) {
@@ -99,34 +101,32 @@ static void create_dictionary() {
 
 	char simbol;
 	char string[STRING_MAX_SIZE] = "";
-	while (!feof(infile)) {
+
+	int i;
+	for (i = 0; i < file_size; i++) {
 		/* lendo próximo símbolo */
-		simbol = fgetc(infile);
+		simbol = file[i];
 
-		if (!feof(infile)) {
-			/* concatenado símbolo à string */
-			string[strlen(string)+1] = '\0';
-			string[strlen(string)] = simbol;
+		/* concatenado símbolo à string */
+		strncat(string, &simbol, 1);
 
-			if (!is_string_found(string)) {
-				node *n = calloc(1, sizeof(node));
-				n->index = index++;
-				strcpy(n->string, string);
-				n->prefix = find_index(get_prefix(string));
-				n->new_simbol = simbol;
-				insert_node(n);
+		if (!is_string_found(string)) {
+			node *n = calloc(1, sizeof(node));
+			n->index = index++;
+			strcpy(n->string, string);
+			n->prefix = find_index(get_prefix(string));
+			n->new_simbol = simbol;
+			insert_node(n);
 
-				/* limpando a string */
-				string[0] = '\0';
-			}
+			/* limpando a string */
+			string[0] = '\0';
 		}
 	}
 
-//	strcpy(last_string, string);
+	free(file);
 }
 
 static void write_code(int code, int size) {
-
 	bit_buffer |= (unsigned long int)code << (LONG_INT_SIZE - bit_count - size);
 	bit_count += size;
 
@@ -139,31 +139,26 @@ static void write_code(int code, int size) {
 }
 
 void encode_file() {
-	read_file();
+	load_file();
 	initialize_list();
 	create_dictionary();
 
-	// Escrevendo o tamanho do dicionario
+	/* escrevendo o tamanho do dicionario */
 	int dictionary_size = end_list->index;
 	fwrite(&dictionary_size, sizeof(int), 1, codedfile);
 
 	node *p = NULL;
-	// O primeiro elemento nao precisa de prefixo
+
+	/* o primeiro elemento nao precisa de prefixo */
 	p = list;
 	write_code(p->new_simbol, CHAR_SIZE);
-#ifdef DEBUG
-	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
-#endif
 	list = p->next;
 	free(p);
 
-	// O prefixo do segundo elemento precisa de apenas 1 bit
+	/* o prefixo do segundo elemento precisa de apenas 1 bit */
 	p = list;
 	write_code(p->prefix, 1);
 	write_code(p->new_simbol, CHAR_SIZE);
-#ifdef DEBUG
-	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
-#endif
 	list = p->next;
 	free(p);
 
@@ -171,19 +166,12 @@ void encode_file() {
 		p = list;
 		write_code(p->prefix, ceil(log2(p->index - 1)));
 		write_code(p->new_simbol, CHAR_SIZE);
-#ifdef DEBUG
-	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", p->index, p->string, p->prefix, p->new_simbol);
-#endif
 		list = p->next;
 		free(p);
 	}
 
+	/* escrevendo o que sobrou no buffer */
 	if (bit_count > 0) {
-#ifdef DEBUG
-	printf("Esvaziando buffer...\n");
-#endif
 		fputc(bit_buffer >> (LONG_INT_SIZE - CHAR_SIZE), codedfile);
 	}
-
-	/* TODO inserir ultima string "last_string" */
 }

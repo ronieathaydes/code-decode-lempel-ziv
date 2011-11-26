@@ -15,8 +15,8 @@ int main(int argc, char *argv[]) {
 		exit (EXIT_FAILURE);
 	}*/
 
-	argv[1] = "/home/padawan/ronie/codedfile.lz";
-	argv[2] = "/home/padawan/ronie/outfile.txt";
+	argv[1] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/codedfile.lz";
+	argv[2] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/outfile.txt";
 
 	if ((codedfile = fopen(argv[1], "rb")) == NULL) {
 		printf("O arquivo de entrada nao pode ser aberto.\n");
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if ((outfile = fopen(argv[2], "w")) == NULL) {
-		printf("O arquivo de saída nao pode ser criado.\n");
+		printf("O arquivo de saida nao pode ser criado.\n");
 		exit(EXIT_FAILURE);
 	}
 

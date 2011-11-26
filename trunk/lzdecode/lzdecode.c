@@ -31,7 +31,6 @@ static void insert_node(node *n) {
 #ifdef DEBUG
 	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
-
 	if (list == NULL && end_list == NULL) {
 		list = end_list = n;
 	} else if (list == end_list) {

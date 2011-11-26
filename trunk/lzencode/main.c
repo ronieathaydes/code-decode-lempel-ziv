@@ -15,8 +15,8 @@ int main(int argc, char *argv[]) {
 		exit (EXIT_FAILURE);
 	}*/
 
-	argv[1] = "/home/ronie/UnB/OA/2-2011/Trabalhos/trab01/teste_arquivos/alice30.txt";
-	argv[2] = "/home/ronie/UnB/OA/2-2011/Trabalhos/trab01/codedfile.lz";
+	argv[1] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/teste_arquivos/teste.txt";
+	argv[2] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/codedfile.lz";
 
 	if ((infile = fopen(argv[1], "r")) == NULL) {
 		printf("O arquivo de entrada nao pode ser aberto.\n");
