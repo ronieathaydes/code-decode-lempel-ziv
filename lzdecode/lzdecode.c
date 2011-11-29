@@ -14,7 +14,8 @@ struct nd {
 	char string[STRING_MAX_SIZE];
 	int prefix;
 	char new_simbol;
-	struct nd *next;
+	struct nd *left;
+	struct nd *right;
 } typedef node;
 
 static node *list;
@@ -34,10 +35,12 @@ static void insert_node(node *n) {
 	if (list == NULL && end_list == NULL) {
 		list = end_list = n;
 	} else if (list == end_list) {
-		list->next = end_list = n;
+		list->right = end_list = n;
+		end_list->left = list;
 	} else {
-		end_list->next = n;
-		end_list = end_list->next;
+		n->left = end_list;
+		end_list->right = n;
+		end_list = end_list->right;
 	}
 }
 
@@ -45,15 +48,18 @@ static void build_string(char string[], int prefix) {
 	node *p = list;
 
 	while (p->index < prefix) {
-		p = p->next;
+		p = p->right;
+	}
+
+	while (p->index > prefix) {
+		p = p->left;
 	}
 
 	if (p->prefix > 0) {
 		build_string(string, p->prefix);
 	}
 
-	string[strlen(string)+1] = '\0';
-	string[strlen(string)] = p->new_simbol;
+	strncat(string, &(p->new_simbol), 1);
 }
 
 static unsigned long int read_code(int size) {
@@ -79,43 +85,55 @@ static unsigned long int read_code(int size) {
 }
 
 static void create_dictionary() {
-	static int index = 1;
+	int index = 1;
 
 	int dictionary_size = 0;
 	fread(&dictionary_size, sizeof(int), 1, codedfile);
 
+	node *n = NULL;
+	char string[STRING_MAX_SIZE] = "";
+
+	/* o primeiro elemento nao precisa de prefixo */
+	n = calloc(1, sizeof(node));
+	n->index = index++;
+	n->prefix = 0;
+	n->new_simbol = (char)read_code(CHAR_SIZE);
+	strncpy(n->string, &(n->new_simbol), 1);
+
+	insert_node(n);
+	string[0] = '\0';
+
+	/* o prefixo do segundo elemento precisa de apenas 1 bit */
+	n = calloc(1, sizeof(node));
+	n->index = index++;
+	n->prefix = (int)read_code(1);
+	n->new_simbol = (char)read_code(CHAR_SIZE);
+	if (n->prefix > 0) {
+		build_string(string, n->prefix);
+	}
+	strcpy(n->string, strncat(string, &(n->new_simbol), 1));
+
+	insert_node(n);
+	string[0] = '\0';
+
 	while (index <= dictionary_size) {
-		node *n = calloc(1, sizeof(node));
+		n = calloc(1, sizeof(node));
 		n->index = index;
-
-		//TODO eliminar if
-
-		n->prefix = 0;
-		if (index == 2) {
-			n->prefix = (int)read_code(1);
-		} else if (index > 2) {
-			int tam_indice = ceil(log2(index - 1));
-			n->prefix = (int)read_code(tam_indice);
-		}
-
+		n->prefix = (int)read_code(ceil(log2(index - 1)));
 		n->new_simbol = (char)read_code(CHAR_SIZE);
-
-		char string[STRING_MAX_SIZE] = "";
 		if (n->prefix > 0) {
 			build_string(string, n->prefix);
 		}
-		string[strlen(string)+1] = '\0';
-		string[strlen(string)] = n->new_simbol;
-		strcpy(n->string, string);
+		strcpy(n->string, strncat(string, &(n->new_simbol), 1));
 
 		insert_node(n);
+		string[0] = '\0';
 		index++;
 	}
 }
 
 void decode_file() {
 	initialize_list();
-
 	create_dictionary();
 
 	node *p;
@@ -124,7 +142,7 @@ void decode_file() {
 
 		fputs(p->string, outfile);
 
-		list = p->next;
+		list = p->right;
 		free(p);
 	}
 }
