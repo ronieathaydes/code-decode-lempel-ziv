@@ -14,7 +14,7 @@ struct nd {
 	char string[STRING_MAX_SIZE];
 	int prefix;
 	char new_simbol;
-	struct nd *next;
+	struct nd *right;
 } typedef node;
 
 static node *list;
@@ -46,16 +46,16 @@ static void insert_node(node *n) {
 	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
 #endif
 	if (list == NULL && end_list == NULL) {
-    	list = end_list = n;
-    } else if (list == end_list) {
-    	list->next = end_list = n;
-    } else {
-    	end_list->next = n;
-    	end_list = end_list->next;
-    }
+		list = end_list = n;
+	} else if (list == end_list) {
+		list->right = end_list = n;
+	} else {
+		end_list->right = n;
+		end_list = end_list->right;
+	}
 }
 
-static int is_string_found(char *string) {
+static int is_string_found(char *string, int *last_found_string_prefix) {
 	node *p = list;
 
 	if (p == NULL) {
@@ -63,44 +63,24 @@ static int is_string_found(char *string) {
 	} else {
 		while (p != NULL) {
 			if (strcmp(p->string, string) == 0) {
+				*last_found_string_prefix = p->index;
 				return 1;
 			}
 
-			p = p->next;
+			p = p->right;
 		}
 
 		return 0;
 	}
-}
-
-static int find_index(char *string) {
-	node *p = list;
-
-	if (p == NULL) {
-		return 0;
-	} else {
-		while (p != NULL) {
-			if (strcmp(p->string, string) == 0) {
-				return p->index;
-			}
-
-			p = p->next;
-		}
-
-		return 0;
-	}
-}
-
-static char* get_prefix(char string[]) {
-	string[strlen(string)-1] = '\0';
-	return string;
 }
 
 static void create_dictionary() {
-	static int index = 1;
+	int index = 1;
 
 	char simbol;
 	char string[STRING_MAX_SIZE] = "";
+
+	int last_found_string_prefix = 0;
 
 	int i;
 	for (i = 0; i < file_size; i++) {
@@ -110,16 +90,18 @@ static void create_dictionary() {
 		/* concatenado símbolo à string */
 		strncat(string, &simbol, 1);
 
-		if (!is_string_found(string)) {
+		if (!is_string_found(string, &last_found_string_prefix)) {
 			node *n = calloc(1, sizeof(node));
 			n->index = index++;
 			strcpy(n->string, string);
-			n->prefix = find_index(get_prefix(string));
+			n->prefix = last_found_string_prefix;
 			n->new_simbol = simbol;
 			insert_node(n);
 
 			/* limpando a string */
 			string[0] = '\0';
+			/* limpando último prefixo encontrado */
+			last_found_string_prefix = 0;
 		}
 	}
 
@@ -152,21 +134,21 @@ void encode_file() {
 	/* o primeiro elemento nao precisa de prefixo */
 	p = list;
 	write_code(p->new_simbol, CHAR_SIZE);
-	list = p->next;
+	list = p->right;
 	free(p);
 
 	/* o prefixo do segundo elemento precisa de apenas 1 bit */
 	p = list;
 	write_code(p->prefix, 1);
 	write_code(p->new_simbol, CHAR_SIZE);
-	list = p->next;
+	list = p->right;
 	free(p);
 
 	while (list != NULL) {
 		p = list;
 		write_code(p->prefix, ceil(log2(p->index - 1)));
 		write_code(p->new_simbol, CHAR_SIZE);
-		list = p->next;
+		list = p->right;
 		free(p);
 	}
 

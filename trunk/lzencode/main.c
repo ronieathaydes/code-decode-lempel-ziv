@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 		exit (EXIT_FAILURE);
 	}*/
 
-	argv[1] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/teste_arquivos/teste.txt";
+	argv[1] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/teste_arquivos/the_prince.txt";
 	argv[2] = "/home/ronie/unb/organizacao-de-arquivos/2-2011/trab01/codedfile.lz";
 
 	if ((infile = fopen(argv[1], "r")) == NULL) {
