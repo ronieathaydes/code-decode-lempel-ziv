@@ -10,11 +10,6 @@
 #include <string.h>
 #include <math.h>
 
-#define CHAR_SIZE sizeof(char) * 8
-#define LONG_INT_SIZE sizeof(long int) * 8
-
-#define STRING_MAX_SIZE 64
-
 /*
  * Variáveis globais
  */
