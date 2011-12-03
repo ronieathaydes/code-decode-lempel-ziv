@@ -7,7 +7,17 @@
 
 #include "lzdecode.h"
 
-#define DEBUG
+/*
+ * Define o tamanho em bytes dos tipos de dados para ajudar na gerência do buffer.
+ */
+#define INT_SIZE sizeof(int) * 8
+#define CHAR_SIZE sizeof(char) * 8
+#define LONG_INT_SIZE sizeof(long int) * 8
+
+/*
+ * Define o tamanho máximo de cada nova string encontrada.
+ */
+#define STRING_MAX_SIZE 64
 
 struct nd {
 	int index;
@@ -18,34 +28,40 @@ struct nd {
 	struct nd *right;
 } typedef node;
 
-static node *list;
-static node *end_list;
+static node *dictionary;
+static node *end_dictionary;
 
 static unsigned long int bit_buffer = 0L;
 static int bit_count = 0;
 
+/*
+ * Inicializa o dicionário.
+ */
 static void initialize_list() {
-	list = end_list = NULL;
+	dictionary = end_dictionary = NULL;
 }
 
+/*
+ * Insere uma nova string no dicionário.
+ */
 static void insert_node(node *n) {
-#ifdef DEBUG
-	printf("Lendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
-#endif
-	if (list == NULL && end_list == NULL) {
-		list = end_list = n;
-	} else if (list == end_list) {
-		list->right = end_list = n;
-		end_list->left = list;
+	if (dictionary == NULL && end_dictionary == NULL) {
+		dictionary = end_dictionary = n;
+	} else if (dictionary == end_dictionary) {
+		dictionary->right = end_dictionary = n;
+		end_dictionary->left = dictionary;
 	} else {
-		n->left = end_list;
-		end_list->right = n;
-		end_list = end_list->right;
+		n->left = end_dictionary;
+		end_dictionary->right = n;
+		end_dictionary = end_dictionary->right;
 	}
 }
 
+/*
+ * Constrói a string a partir do novo caractere pesquisando no dicionário.
+ */
 static void build_string(char string[], int prefix) {
-	node *p = list;
+	node *p = dictionary;
 
 	while (p->index < prefix) {
 		p = p->right;
@@ -62,6 +78,9 @@ static void build_string(char string[], int prefix) {
 	strncat(string, &(p->new_simbol), 1);
 }
 
+/*
+ * Lê uma sequência de bits do buffer.
+ */
 static unsigned long int read_code(int size) {
 	unsigned long int return_value;
 
@@ -84,15 +103,19 @@ static unsigned long int read_code(int size) {
 	return return_value;
 }
 
+/*
+ * Cria o dicionário para um bloco do arquivo.
+ */
 static void create_dictionary() {
 	int index = 1;
 
-	int dictionary_size = 0;
-	fread(&dictionary_size, sizeof(int), 1, codedfile);
+	/* lendo o tamanho do dicionario */
+	int dictionary_size = (int)read_code(INT_SIZE);
 
 	node *n = NULL;
 	char string[STRING_MAX_SIZE] = "";
 
+	/* lendo o primeiro elemento do dicionário */
 	/* o primeiro elemento nao precisa de prefixo */
 	n = calloc(1, sizeof(node));
 	n->index = index++;
@@ -103,6 +126,7 @@ static void create_dictionary() {
 	insert_node(n);
 	string[0] = '\0';
 
+	/* lendo o segundo elemento do dicionário */
 	/* o prefixo do segundo elemento precisa de apenas 1 bit */
 	n = calloc(1, sizeof(node));
 	n->index = index++;
@@ -116,10 +140,11 @@ static void create_dictionary() {
 	insert_node(n);
 	string[0] = '\0';
 
+	/* lendo o restante do dicionário */
 	while (index <= dictionary_size) {
 		n = calloc(1, sizeof(node));
 		n->index = index;
-		n->prefix = (int)read_code(ceil(log2(index - 1)));
+		n->prefix = (int)read_code(ceil((float)(log(n->index - 1) / log(2))));
 		n->new_simbol = (char)read_code(CHAR_SIZE);
 		if (n->prefix > 0) {
 			build_string(string, n->prefix);
@@ -127,22 +152,34 @@ static void create_dictionary() {
 		strcpy(n->string, strncat(string, &(n->new_simbol), 1));
 
 		insert_node(n);
+
+		/* limpando a string */
 		string[0] = '\0';
+
 		index++;
 	}
 }
 
+/*
+ * Concentra toda a lógica de decodificação.
+ */
 void decode_file() {
-	initialize_list();
-	create_dictionary();
+	int number_of_blocks = 0;
+	fread(&number_of_blocks, sizeof(int), 1, codedfile);
 
-	node *p;
-	while (list != NULL) {
-		p = list;
+	int i;
+	for (i = 0; i < number_of_blocks; i++) {
+		initialize_list();
+		create_dictionary();
 
-		fputs(p->string, outfile);
+		node *p;
+		while (dictionary != NULL) {
+			p = dictionary;
 
-		list = p->right;
-		free(p);
+			fputs(p->string, outfile);
+
+			dictionary = p->right;
+			free(p);
+		}
 	}
 }

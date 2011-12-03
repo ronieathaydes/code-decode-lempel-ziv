@@ -7,7 +7,23 @@
 
 #include "lzencode.h"
 
-#define DEBUG
+/*
+ * Define o tamanho em bytes dos tipos de dados para ajudar na gerência do buffer.
+ */
+#define INT_SIZE sizeof(int) * 8
+#define CHAR_SIZE sizeof(char) * 8
+#define LONG_INT_SIZE sizeof(long int) * 8
+
+/*
+ * Define o tamanho máximo de cada nova string encontrada.
+ */
+#define STRING_MAX_SIZE 64
+
+/*
+ * Define o tamanho dos blocos em que o arquivo vai ser dividido.
+ * Foi escolhido o tamanho de 100Kb pelo bom desempenho demontrado nos testes.
+ */
+#define BLOCK_SIZE 102400
 
 struct nd {
 	int index;
@@ -17,46 +33,59 @@ struct nd {
 	struct nd *right;
 } typedef node;
 
-static node *list;
-static node *end_list;
+static node *dictionary;
+static node *end_dictionary;
 
 static unsigned long int bit_buffer = 0L;
 static int bit_count = 0;
 
-static char *file = NULL;
-static char *begin_file = NULL;
 static long file_size = 0;
+static char *file_block = NULL;
+static long file_block_size = 0;
 
+/*
+ * Carrega um bloco do arquivo na memória para a criação do dicionário.
+ */
 static void load_file() {
-	fseek(infile, 0, SEEK_END);
-	file_size = ftell(infile);
-	rewind(infile);
-
-	file = calloc(file_size, sizeof(char));
-	fread(file, sizeof(char), file_size, infile);
-	begin_file = file;
-}
-
-static void initialize_list() {
-	list = end_list = NULL;
-}
-
-static void insert_node(node *n) {
-#ifdef DEBUG
-	printf("Escrevendo elemento %d \"%s\" (%d|\"%c\") ...\n", n->index, n->string, n->prefix, n->new_simbol);
-#endif
-	if (list == NULL && end_list == NULL) {
-		list = end_list = n;
-	} else if (list == end_list) {
-		list->right = end_list = n;
+	if (file_size < BLOCK_SIZE) {
+		file_block = calloc(file_size, sizeof(char));
+		fread(file_block, sizeof(char), file_size, infile);
+		file_block_size = file_size;
+		file_size -= file_size;
 	} else {
-		end_list->right = n;
-		end_list = end_list->right;
+		file_block = calloc(BLOCK_SIZE, sizeof(char));
+		fread(file_block, sizeof(char), BLOCK_SIZE, infile);
+		file_block_size = BLOCK_SIZE;
+		file_size -= BLOCK_SIZE;
 	}
 }
 
+/*
+ * Inicializa o dicionário.
+ */
+static void initialize_dictionary() {
+	dictionary = end_dictionary = NULL;
+}
+
+/*
+ * Insere uma nova string no dicionário.
+ */
+static void insert_node(node *n) {
+	if (dictionary == NULL && end_dictionary == NULL) {
+		dictionary = end_dictionary = n;
+	} else if (dictionary == end_dictionary) {
+		dictionary->right = end_dictionary = n;
+	} else {
+		end_dictionary->right = n;
+		end_dictionary = end_dictionary->right;
+	}
+}
+
+/*
+ * Verifica se a string já foi vista anteriormente.
+ */
 static int is_string_found(char *string, int *last_found_string_prefix) {
-	node *p = list;
+	node *p = dictionary;
 
 	if (p == NULL) {
 		return 0;
@@ -74,6 +103,9 @@ static int is_string_found(char *string, int *last_found_string_prefix) {
 	}
 }
 
+/*
+ * Cria o dicionário para um bloco do arquivo.
+ */
 static void create_dictionary() {
 	int index = 1;
 
@@ -83,9 +115,9 @@ static void create_dictionary() {
 	int last_found_string_prefix = 0;
 
 	int i;
-	for (i = 0; i < file_size; i++) {
+	for (i = 0; i < file_block_size; i++) {
 		/* lendo próximo símbolo */
-		simbol = file[i];
+		simbol = file_block[i];
 
 		/* concatenado símbolo à string */
 		strncat(string, &simbol, 1);
@@ -105,9 +137,12 @@ static void create_dictionary() {
 		}
 	}
 
-	free(file);
+	free(file_block);
 }
 
+/*
+ * Escreve uma sequência de bits no buffer.
+ */
 static void write_code(int code, int size) {
 	bit_buffer |= (unsigned long int)code << (LONG_INT_SIZE - bit_count - size);
 	bit_count += size;
@@ -120,36 +155,51 @@ static void write_code(int code, int size) {
 	}
 }
 
+/*
+ * Concentra toda a lógica de codificação.
+ */
 void encode_file() {
-	load_file();
-	initialize_list();
-	create_dictionary();
+	fseek(infile, 0, SEEK_END);
+	file_size = ftell(infile);
+	rewind(infile);
 
-	/* escrevendo o tamanho do dicionario */
-	int dictionary_size = end_list->index;
-	fwrite(&dictionary_size, sizeof(int), 1, codedfile);
+	int number_of_blocks = ceil((float)file_size / BLOCK_SIZE);
+	fwrite(&number_of_blocks, sizeof(int), 1, codedfile);
 
-	node *p = NULL;
+	while (file_size > 0) {
+		load_file();
+		initialize_dictionary();
+		create_dictionary();
 
-	/* o primeiro elemento nao precisa de prefixo */
-	p = list;
-	write_code(p->new_simbol, CHAR_SIZE);
-	list = p->right;
-	free(p);
+		/* escrevendo o tamanho do dicionario */
+		int dictionary_size = end_dictionary->index;
+		write_code(dictionary_size, INT_SIZE);
 
-	/* o prefixo do segundo elemento precisa de apenas 1 bit */
-	p = list;
-	write_code(p->prefix, 1);
-	write_code(p->new_simbol, CHAR_SIZE);
-	list = p->right;
-	free(p);
+		node *p = NULL;
 
-	while (list != NULL) {
-		p = list;
-		write_code(p->prefix, ceil(log2(p->index - 1)));
+		/* escreve o primeiro elemento do dicionário */
+		/* o primeiro elemento não precisa de prefixo */
+		p = dictionary;
 		write_code(p->new_simbol, CHAR_SIZE);
-		list = p->right;
+		dictionary = p->right;
 		free(p);
+
+		/* escreve o segundo elemento do dicionário */
+		/* o prefixo do segundo elemento precisa de apenas 1 bit */
+		p = dictionary;
+		write_code(p->prefix, 1);
+		write_code(p->new_simbol, CHAR_SIZE);
+		dictionary = p->right;
+		free(p);
+
+		/* escreve o restante do dicionário */
+		while (dictionary != NULL) {
+			p = dictionary;
+			write_code(p->prefix, ceil((float)(log(p->index - 1) / log(2))));
+			write_code(p->new_simbol, CHAR_SIZE);
+			dictionary = p->right;
+			free(p);
+		}
 	}
 
 	/* escrevendo o que sobrou no buffer */
