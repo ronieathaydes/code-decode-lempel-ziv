@@ -1,0 +1,1 @@
+Codificador e decodificador Lempel-Ziv implementado em C.
